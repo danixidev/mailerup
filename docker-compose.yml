@@ -1,0 +1,59 @@
+# MailerUp — despliegue completo con Docker Compose.
+# Actualizar = git pull && docker compose up -d --build
+#   · web   reconstruye el backend y aplica migraciones al arrancar
+#   · nginx recompila el frontend (Vite) y sirve el dist
+#   · db    Postgres con datos persistidos en el volumen pgdata (sobreviven a rebuilds)
+#
+# Pon delante tu propio nginx/Cloudflare (TLS) haciendo proxy de tu dominio a
+# 127.0.0.1:${NGINX_HOST_PORT} (este compose). Ver nginx/default.conf.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env            # POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - backend/.env          # secretos Django (SECRET_KEY, SMTP, ALLOWED_HOSTS…)
+      - .env                  # DATABASE_URL (apunta al servicio db)
+    environment:
+      DJANGO_SETTINGS_MODULE: mailerup.settings.production
+    volumes:
+      # .env del HOST para que las credenciales SMTP persistan entre rebuilds.
+      - ./backend/.env:/app/.env
+      # Archivos subidos (recursos adjuntos a campañas). Persisten entre rebuilds.
+      - mediafiles:/app/media
+      - ./scripts:/app/scripts
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8100"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      # Por defecto solo accesible por el reverse proxy del host (127.0.0.1).
+      # Cambia BIND_ADDR a 0.0.0.0 en el .env para exponerlo directamente.
+      - "${BIND_ADDR:-127.0.0.1}:${NGINX_HOST_PORT:-8110}:80"
+
+volumes:
+  pgdata:
+  mediafiles:

@@ -1,0 +1,82 @@
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+.python-version
+
+# Builds
+dist/
+build/
+
+# Django runtime
+backend/.env
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/staticfiles/
+backend/media/
+
+# --- Node / Vite ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/.vite/
+
+# --- Logs / coverage ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pip-log.txt
+coverage/
+.coverage
+htmlcov/
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Local agent caches ---
+.claude/
+.aider*
+.cursor/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+backups/
+
+# Docker root env (Postgres creds)
+/.env
+/.env.*
+!/.env.example
+
+# --- Secretos / credenciales (defensa en profundidad) ---
+.env
+.env.*
+!.env.example
+**/.env
+!**/.env.example
+*.bak
+# Certificados y claves privadas
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+# Volcados de base de datos / exports con datos de suscriptores
+*.sql
+*.dump
+*.sqlite
+*.sqlite3
+db-export*.json
+subscribers_*.json

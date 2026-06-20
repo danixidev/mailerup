@@ -1,0 +1,18 @@
+[Unit]
+Description=MailerUp (Django ASGI via uvicorn)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=mailerup
+Group=mailerup
+WorkingDirectory=/opt/mailerup/backend
+Environment=DJANGO_SETTINGS_MODULE=mailerup.settings.production
+ExecStart=/opt/mailerup/backend/.venv/bin/uvicorn mailerup.asgi:application --host 127.0.0.1 --port 8100 --workers 1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

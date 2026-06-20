@@ -1,0 +1,13 @@
+# Contexto de build del backend (./backend)
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+db.sqlite3
+db.sqlite3-journal
+.env
+.env.*
+staticfiles/
+media/
+.git/

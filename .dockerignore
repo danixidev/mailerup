@@ -1,0 +1,18 @@
+# Contexto de build de la imagen nginx (raíz del repo: solo necesita frontend/ y nginx/)
+.git/
+backups/
+docs/
+*.md
+*.png
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/staticfiles/
+backend/media/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+**/__pycache__/
+*.log
