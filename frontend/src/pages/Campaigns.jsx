@@ -18,8 +18,18 @@ export default function Campaigns() {
   async function load() {
     setLoading(true)
     try {
-      const r = await api.get('/campaigns/')
-      setItems(r.data.results || r.data)
+      // El endpoint pagina (DRF, 25/página). Recorremos todas las páginas para
+      // que los contadores de las pestañas y la lista reflejen el total real.
+      const all = []
+      let page = 1
+      for (;;) {
+        const r = await api.get('/campaigns/', { params: { page } })
+        const data = r.data
+        all.push(...(data.results || data))
+        if (data && data.next) page += 1
+        else break
+      }
+      setItems(all)
     } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
