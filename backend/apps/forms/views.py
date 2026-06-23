@@ -276,6 +276,11 @@ class VerifySubscriptionView(APIView):
         body = f'<div class="ico">&#x1F389;</div><h1>Suscripcion confirmada!</h1><p>{success_msg}</p><p><span class="email">{safe_email}</span></p>'
 
         if form_obj.redirect_url:
-            return HttpResponseRedirect(form_obj.redirect_url)
+            # Solo redirigir a http/https. Bloquea esquemas peligrosos
+            # (javascript:, data:) y URLs scheme-relative (//evil.com) para que
+            # el endpoint público no se use como redirector de phishing.
+            from urllib.parse import urlparse
+            if urlparse(form_obj.redirect_url).scheme in ("http", "https"):
+                return HttpResponseRedirect(form_obj.redirect_url)
 
         return HttpResponse(FORM_PAGE.format(title="Suscrito!", body=body))

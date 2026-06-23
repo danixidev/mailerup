@@ -103,12 +103,20 @@ def process_automation_queue():
             # permitir darse de baja). El token solo necesita el subscriber_id.
             unsub_url = f"{base}/u/{make_unsubscribe_token(subscriber.id)}/"
 
-            def _fill(text):
+            from django.utils.html import escape
+
+            def _fill(text, html=False):
+                # En cuerpo HTML escapamos los datos del suscriptor (vienen del alta
+                # pública sin sanear) para que nadie inyecte markup en el correo del
+                # remitente. En el asunto (texto plano) no se escapa.
+                fn, ln, em = subscriber.first_name, subscriber.last_name, subscriber.email
+                if html:
+                    fn, ln, em = escape(fn), escape(ln), escape(em)
                 return (
                     (text or "")
-                    .replace("{{first_name}}", subscriber.first_name)
-                    .replace("{{last_name}}", subscriber.last_name)
-                    .replace("{{email}}", subscriber.email)
+                    .replace("{{first_name}}", fn)
+                    .replace("{{last_name}}", ln)
+                    .replace("{{email}}", em)
                     .replace("{{unsubscribe_url}}", unsub_url)
                 )
 
@@ -117,7 +125,7 @@ def process_automation_queue():
             # Pie SIEMPRE generado al enviar desde la config (quita el del cuerpo
             # y añade uno limpio), luego se rellenan placeholders.
             from apps.accounts.footer import apply_footer
-            html = _fill(apply_footer(step.html_content, user))
+            html = _fill(apply_footer(step.html_content, user), html=True)
 
             # Tracking de automatización: reescribe enlaces a /ca/<token>/ e
             # inyecta el pixel de apertura /oa/<token>/ (espeja el de campañas).

@@ -4,6 +4,7 @@ from django.core import signing
 from django.db.models import Count
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect
+from django.utils.html import escape
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -246,7 +247,9 @@ class UnsubscribeView(APIView):
             if already
             else "Has sido dado de baja. No volverás a recibir correos nuestros."
         )
-        body = f'<div class="ico">{ico}</div><h1>{title}</h1><p>{msg}</p><p><span class="email">{subscriber.email}</span></p><p class="muted">Puedes cerrar esta pestaña.</p>'
+        # subscriber.email se refleja en HTML: escapar (el alta pública solo valida
+        # que contenga "@", así que un email con markup pasaría) para evitar XSS.
+        body = f'<div class="ico">{ico}</div><h1>{title}</h1><p>{msg}</p><p><span class="email">{escape(subscriber.email)}</span></p><p class="muted">Puedes cerrar esta pestaña.</p>'
         return HttpResponse(UNSUB_PAGE.format(title=title, body=body))
 
 

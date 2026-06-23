@@ -204,6 +204,7 @@ def _personalize(html, subscriber, campaign):
     """Substitute placeholders, rewrite links for click tracking, inject open pixel."""
     from apps.analytics.views import make_unsubscribe_token, make_track_token
     from apps.accounts.footer import apply_footer
+    from django.utils.html import escape
 
     base = settings.PUBLIC_BASE_URL.rstrip("/")
     unsub_token = make_unsubscribe_token(subscriber.id, campaign.id)
@@ -216,11 +217,16 @@ def _personalize(html, subscriber, campaign):
     # resuelve en el .replace de abajo.
     html = apply_footer(html, campaign.user)
 
+    # Escapamos los datos del suscriptor: first_name/last_name/email llegan del
+    # formulario público de alta sin sanear, y aquí se insertan en HTML que se
+    # envía como correo. Sin escapar, un tercero podría inyectar HTML/markup en
+    # los correos del remitente (phishing/spoofing) suscribiéndose con un nombre
+    # malicioso. El cuerpo de la campaña (autoría del admin) NO se escapa.
     html = (
         html
-        .replace("{{first_name}}", subscriber.first_name)
-        .replace("{{last_name}}", subscriber.last_name)
-        .replace("{{email}}", subscriber.email)
+        .replace("{{first_name}}", escape(subscriber.first_name))
+        .replace("{{last_name}}", escape(subscriber.last_name))
+        .replace("{{email}}", escape(subscriber.email))
         .replace("{{unsubscribe_url}}", unsub_url)
     )
 

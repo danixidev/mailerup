@@ -1,11 +1,12 @@
 from django.urls import path
 from .views import (
-    RegisterView, MeView, ChangePasswordView, email_providers, test_email,
+    MeView, ChangePasswordView, email_providers, test_email,
     AdminUserListView, AdminUserDetailView, db_export,
 )
 
 urlpatterns = [
-    path("register/", RegisterView.as_view()),
+    # No hay registro público: las cuentas las crea solo el admin vía /users/
+    # (AdminUserListView, IsAdminUser) o `manage.py createsuperuser` para el bootstrap.
     path("me/", MeView.as_view()),
     path("change-password/", ChangePasswordView.as_view()),
     path("email-providers/", email_providers),

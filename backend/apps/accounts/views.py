@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (
-    RegisterSerializer, UserSerializer, ChangePasswordSerializer, AdminUserSerializer,
+    UserSerializer, ChangePasswordSerializer, AdminUserSerializer,
 )
 
 User = get_user_model()
@@ -221,11 +221,6 @@ PROVIDER_PRESETS = {
         },
     },
 }
-
-
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-    permission_classes = (permissions.AllowAny,)
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -473,6 +468,14 @@ class CookieTokenLogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # Invalida el refresh token en el servidor (blacklist), no solo borra la
+        # cookie: si el token se hubiera capturado antes del logout, deja de servir.
+        refresh_token = request.COOKIES.get('refresh')
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except Exception:
+                pass  # token ya inválido/caducado: nada que invalidar
         response = Response({'detail': 'Sesión cerrada.'})
         response.delete_cookie('access', path='/')
         response.delete_cookie('refresh', path='/')

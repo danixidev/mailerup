@@ -56,7 +56,12 @@ export default function Settings() {
     try {
       const payload = { ...me }
       delete payload.id; delete payload.email; delete payload.smtp_password_set
+      delete payload.brevo_api_key_set; delete payload.sendgrid_api_key_set
+      // Las claves son write_only: si están en blanco no se reenvían (el backend
+      // las mantiene). Así guardar ajustes no borra la API key ya configurada.
       if (!payload.smtp_password) delete payload.smtp_password
+      if (!payload.brevo_api_key) delete payload.brevo_api_key
+      if (!payload.sendgrid_api_key) delete payload.sendgrid_api_key
       const r = await api.patch('/auth/me/', payload)
       setMe(r.data)
       setSavedMsg({ ok: true, text: 'Ajustes guardados' })
@@ -245,15 +250,17 @@ export default function Settings() {
         {isApi && me.email_provider === 'brevo' && (
           <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
             <label className="label">Brevo API key</label>
-            <input className="input" value={me.brevo_api_key || ''}
-              onChange={(e) => setMeField('brevo_api_key', e.target.value)} placeholder="xkeysib-..." />
+            <input className="input" type="password" value={me.brevo_api_key || ''}
+              onChange={(e) => setMeField('brevo_api_key', e.target.value)}
+              placeholder={me.brevo_api_key_set ? '••••••••  (guardada)' : 'xkeysib-...'} />
           </div>
         )}
         {isApi && me.email_provider === 'sendgrid' && (
           <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
             <label className="label">SendGrid API key</label>
-            <input className="input" value={me.sendgrid_api_key || ''}
-              onChange={(e) => setMeField('sendgrid_api_key', e.target.value)} placeholder="SG..." />
+            <input className="input" type="password" value={me.sendgrid_api_key || ''}
+              onChange={(e) => setMeField('sendgrid_api_key', e.target.value)}
+              placeholder={me.sendgrid_api_key_set ? '••••••••  (guardada)' : 'SG...'} />
           </div>
         )}
 
