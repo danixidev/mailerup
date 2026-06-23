@@ -56,6 +56,7 @@ export default function Layout() {
         <div className="flex h-16 items-center gap-3 border-b border-gray-200 dark:border-slate-700 px-5">
           <img src="/logo.png?v=2" alt="MailerUp" className="h-9 w-9 object-contain" />
           <span className="text-lg font-semibold">MailerUp</span>
+          <span className="text-[10px] font-medium leading-none text-gray-400 dark:text-slate-500 self-end mb-1.5">v{__APP_VERSION__}</span>
           {/* Botón cerrar en móvil */}
           <button
             className="ml-auto lg:hidden text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200"
