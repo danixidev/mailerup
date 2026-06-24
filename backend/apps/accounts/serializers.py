@@ -83,6 +83,22 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_admin(self, obj):
         return obj.is_staff
 
+    @staticmethod
+    def _no_newlines(value, field):
+        # Estos valores acaban escritos en el .env: un salto de línea permitiría
+        # inyectar otra variable de entorno (ver apps.accounts.env_file.update_env).
+        if value and ("\n" in value or "\r" in value):
+            raise serializers.ValidationError(
+                f"El campo {field} no puede contener saltos de línea."
+            )
+        return value
+
+    def validate_smtp_host(self, value):
+        return self._no_newlines(value, "smtp_host")
+
+    def validate_smtp_user(self, value):
+        return self._no_newlines(value, "smtp_user")
+
     def get_smtp_password_set(self, obj):
         return bool(obj.smtp_password)
 

@@ -261,8 +261,15 @@ MAX_STORAGE_PER_USER = 500 * 1024 * 1024  # 500 MB
 # Extensiones que el navegador renderiza/ejecuta inline (vector de XSS). Se
 # rechazan en la subida; serve_resource añade defensa en profundidad.
 BLOCKED_UPLOAD_EXTS = {
+    # Render/ejecución en el navegador (XSS en el mismo origen del panel).
     '.svg', '.html', '.htm', '.xhtml', '.shtml', '.xml', '.xsl',
     '.js', '.mjs', '.mhtml', '.swf', '.htc',
+    # Ejecutables del lado servidor: hoy nginx sirve estos ficheros como
+    # estáticos (sin intérprete), pero se bloquean por defensa en profundidad
+    # para que un futuro cambio de servidor/vhost no derive en RCE.
+    '.php', '.php3', '.php4', '.php5', '.php7', '.phtml', '.pht', '.phar',
+    '.jsp', '.jspx', '.asp', '.aspx', '.ashx', '.cgi', '.pl', '.py',
+    '.rb', '.sh', '.bash', '.exe', '.com', '.bat', '.cmd', '.ps1', '.jar',
 }
 # Tipos seguros de servir inline; cualquier otro se fuerza como descarga.
 INLINE_SAFE_EXTS = {

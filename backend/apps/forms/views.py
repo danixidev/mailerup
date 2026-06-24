@@ -1,4 +1,5 @@
 import logging
+import re
 from django.core import signing
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect
@@ -53,18 +54,33 @@ p{{color:#475569;line-height:1.5;margin:0.5rem 0}}.email{{font-family:monospace;
 # Helpers
 # ---------------------------------------------------------------------------
 
+_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+
+
+def _safe_color(value, default="#2563eb"):
+    """Solo se admite un color hex (#rgb / #rrggbb). Cualquier otra cosa
+    (controlable por el usuario que crea el formulario) se descarta para que no
+    pueda romper el atributo style e inyectar CSS/HTML donde se pegue el embed."""
+    value = (value or "").strip()
+    return value if _HEX_COLOR_RE.match(value) else default
+
+
 def _build_embed_html(form, base):
-    color = form.primary_color
+    # title/description/button_text los controla quien crea el formulario y este
+    # HTML se incrusta tal cual en sitios externos: escapar para evitar stored XSS.
+    color = _safe_color(form.primary_color)
+    safe_title = escape(form.title)
+    safe_button = escape(form.button_text)
     fields_html = ""
     if form.collect_first_name:
         fields_html += '<div style="margin-bottom:12px"><input type="text" name="first_name" placeholder="Tu nombre" style="width:100%;padding:10px 14px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box" /></div>'
     if form.collect_last_name:
         fields_html += '<div style="margin-bottom:12px"><input type="text" name="last_name" placeholder="Tus apellidos" style="width:100%;padding:10px 14px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box" /></div>'
-    desc_html = f'<p style="color:#6b7280;font-size:14px;margin:0 0 16px 0">{form.description}</p>' if form.description else ""
+    desc_html = f'<p style="color:#6b7280;font-size:14px;margin:0 0 16px 0">{escape(form.description)}</p>' if form.description else ""
 
-    return f"""<!-- Mailerup Form: {form.name} -->
+    return f"""<!-- Mailerup Form: {escape(form.name)} -->
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;max-width:440px">
-  <h3 style="margin:0 0 8px 0;font-size:20px;font-weight:600;color:#111827">{form.title}</h3>
+  <h3 style="margin:0 0 8px 0;font-size:20px;font-weight:600;color:#111827">{safe_title}</h3>
   {desc_html}
   <form action="{base}/subscribe/{form.id}/" method="post">
     <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off" />
@@ -75,7 +91,7 @@ def _build_embed_html(form, base):
     </div>
     <button type="submit"
             style="width:100%;padding:11px 20px;background:{color};color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:500;cursor:pointer">
-      {form.button_text}
+      {safe_button}
     </button>
   </form>
 </div>"""
@@ -164,6 +180,7 @@ class SubscriptionFormViewSet(viewsets.ModelViewSet):
 
 class SubscribeView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "subscribe"
 
     def post(self, request, form_id):
         # Honeypot: if the hidden website field is filled, silently ignore

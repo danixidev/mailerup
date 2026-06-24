@@ -44,6 +44,17 @@ def read_env_file():
     return data
 
 
+# Solo estas claves pueden escribirse desde la UI (ajustes SMTP del admin).
+# Allow-list: impide que un valor manipulado intente crear/sobrescribir otras
+# variables sensibles del entorno (SECRET_KEY, DATABASE_URL, ALLOWED_HOSTS…).
+_WRITABLE_KEYS = {
+    "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD",
+    "SMTP_USE_TLS", "SMTP_USE_SSL",
+}
+
+_VALID_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
 def _to_str(value):
     if isinstance(value, bool):
         return "True" if value else "False"
@@ -56,6 +67,11 @@ def update_env(mapping):
     String values are single-quoted in the file so spaces and special chars
     (``#``, ``=`` …) in SMTP passwords survive round-trips. Other lines and
     comments in the file are left untouched.
+
+    Por seguridad, solo se aceptan claves de ``_WRITABLE_KEYS`` y valores sin
+    saltos de línea: un ``\\n`` en el valor permitiría escribir una segunda línea
+    en el ``.env`` y, al releerlo, inyectar/sobrescribir variables arbitrarias
+    (p. ej. ``SECRET_KEY``). Es una frontera de integridad de la configuración.
     """
     lines = []
     if ENV_PATH.exists():
@@ -68,7 +84,13 @@ def update_env(mapping):
             positions[m.group(1)] = i
 
     for key, value in mapping.items():
+        if not _VALID_KEY_RE.match(key) or key not in _WRITABLE_KEYS:
+            raise ValueError(f"Clave de entorno no permitida: {key!r}")
         raw = _to_str(value)
+        if "\n" in raw or "\r" in raw:
+            raise ValueError(
+                f"Valor inválido para {key}: no puede contener saltos de línea."
+            )
         os.environ[key] = raw
         file_line = f"{key}='{raw}'"
         if key in positions:

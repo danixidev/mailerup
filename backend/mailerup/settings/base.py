@@ -100,6 +100,14 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    # Throttling por ámbito: solo afecta a las vistas que declaran `throttle_scope`
+    # (login y alta pública). No limita el resto de la API autenticada, donde hay
+    # operaciones masivas legítimas (import/export de suscriptores, etc.).
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "10/min",       # frena fuerza bruta / credential stuffing
+        "subscribe": "30/min",   # frena abuso del formulario público de alta
+    },
 }
 
 # JWT

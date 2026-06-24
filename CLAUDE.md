@@ -73,7 +73,49 @@ cd backend && python manage.py runserver  # DJANGO_SETTINGS_MODULE=mailerup.sett
 - **Automatizaciones** (`apps/automations/`): `Automation` → `AutomationStep` (PK UUID) → `AutomationEnrollment`/`AutomationSend`. El scheduler dispara `process_automation_queue` cada 30-60s. Cada paso inyecta pixel de apertura (`/oa/<token>/`) y reescribe enlaces (`/ca/<token>/`). Métricas en `analytics.AutomationEmailOpen/Click`.
 - **Scheduler + envío progresivo**: `apps/campaigns/scheduler.py` arranca un hilo daemon en `apps.py.ready()` (solo en procesos servidor). Envía por lotes (`CAMPAIGN_SEND_BATCH_SIZE`, `CAMPAIGN_SEND_INTERVAL_SECONDS`), estado reanudable en `CampaignSend` con `get_or_create`. `MAILERUP_DISABLE_SCHEDULER=1` lo desactiva (útil si algún día hay >1 proceso).
 - **Envío** (`apps/campaigns/tasks.py`): `_personalize()` sustituye placeholders, reescribe `href=` para click tracking y añade el pixel. **Tokens firmados con `signing.dumps`**; los URLs públicos (`/u/`, `/o/`, `/c/`, `/oa/`, `/ca/`) viven en `mailerup/urls.py`. `SMTPSender` (`apps/integrations/email_sender.py`) fuerza `from_addr`/`to_addrs` explícitos para que el envelope MAIL FROM coincida con `smtp_user` (clave para SPF). **No tocar sin saber lo que haces.**
-- **Permisos**: `IsAdminUser` protege `/api/auth/users/*` y `/api/auth/db-export/`. `UserSerializer.update()` filtra campos sensibles para no-admins; estos heredan provider/footer del primer admin.
+- **Permisos** (ver sección "Modelo de seguridad" más abajo): el default DRF es `IsAuthenticated` (`settings/base.py`), así que **toda la API es privada salvo opt-in explícito**. `IsAdminUser` protege además `/api/auth/users/*` (alta/gestión de cuentas) y `/api/auth/db-export/`. `UserSerializer.update()` filtra los campos `ADMIN_ONLY_FIELDS` para no-admins; estos heredan provider/footer del primer admin pero **nunca** sus secretos. **No existe registro anónimo**: las cuentas solo las crea un admin o `createsuperuser`.
+
+### Modelo de seguridad (PRIORIDAD MÁXIMA — no romper estos invariantes)
+
+MailerUp es un **inquilino compartido**: existe un usuario admin (`is_staff=True`) y los datos
+(suscriptores, campañas, formularios, automatizaciones) pertenecen a ese admin vía
+`get_admin_user()`. Todos los usuarios **autenticados** comparten lectura/escritura de la
+newsletter, los suscriptores y las campañas — eso es intencionado. Las reglas inviolables:
+
+1. **Nadie se registra solo.** No hay endpoint público de alta. Las cuentas las crea únicamente
+   un admin en `POST /api/auth/users/` (`IsAdminUser`) o `manage.py createsuperuser`. **Nunca**
+   reintroducir un `RegisterView`/ruta `register` con `AllowAny` (fue el CVE-2026-13164).
+2. **Sin autenticación no se accede a ningún dato privado.** El default DRF es `IsAuthenticated`.
+   Los únicos endpoints `AllowAny` legítimos son: login/refresh/logout, el alta pública de
+   suscriptores (`/subscribe/…`, solo **recibe** datos) y los públicos firmados por token HMAC
+   (tracking `/o /c /oa /ca`, baja `/u`, confirmación de alta, `/recurso/`). **Cualquier vista
+   nueva que liste o exponga datos debe heredar `IsAuthenticated` (no poner `AllowAny`).**
+3. **Solo el admin ve/edita las API keys y credenciales de proveedor.** `brevo_api_key`,
+   `sendgrid_api_key` y `smtp_password` son `write_only` en `UserSerializer` (nunca se devuelven
+   en `GET /api/auth/me/`; la UI solo recibe flags `*_set`). Los campos `ADMIN_ONLY_FIELDS`
+   (provider/SMTP/footer) solo los modifica un admin; un no-admin los hereda en lectura pero
+   `UserSerializer.update()` los descarta si intenta escribirlos. Las credenciales SMTP viven en
+   `.env`, no en la BD.
+4. **Escalada de privilegios cerrada.** `MeView` tiene `email`/`is_admin` en `read_only_fields`:
+   un usuario no puede auto-otorgarse admin ni cambiar su email. Solo `IsAdminUser` toca `is_staff`.
+   No se puede borrar/degradar al último admin ni autoeliminarse.
+5. **Aislamiento por propietario en los serializers.** Los campos relacionales editables
+   (`Campaign.subscriber_list`, `SubscriptionForm.target_list`) acotan su queryset al propietario
+   en `get_fields()` para evitar IDOR (CWE-639). Replica ese patrón en cualquier `PrimaryKeyRelatedField` nuevo.
+6. **Entrada pública siempre escapada.** Datos controlables por el usuario (nombre/email de
+   suscriptor, `title`/`description`/`button_text`/`primary_color` de formularios, `success_message`)
+   se escapan con `django.utils.html.escape` antes de interpolarse en HTML (correos, páginas de
+   baja/confirmación, snippet `embed`). El color se valida contra hex estricto.
+7. **No inyectar en `.env`.** `apps/accounts/env_file.update_env()` solo acepta claves de una
+   allowlist (`SMTP_*`) y rechaza valores con `\n`/`\r`. No ampliar la allowlist a claves sensibles
+   (SECRET_KEY, DATABASE_URL…) ni quitar la validación anti-salto-de-línea.
+8. **Rate-limiting.** Login (`scope "login"`, 10/min) y alta pública (`scope "subscribe"`, 30/min)
+   usan `ScopedRateThrottle`. El resto de la API autenticada no se limita (hay operaciones masivas
+   legítimas). Para limitar un endpoint nuevo, dale `throttle_scope` y añade su rate en
+   `DEFAULT_THROTTLE_RATES`.
+
+Antes de mergear cualquier cambio que toque vistas, permisos, serializers o el modelo `User`,
+verifica que estos 8 invariantes siguen en pie.
 
 ### Frontend
 
@@ -88,17 +130,19 @@ cd backend && python manage.py runserver  # DJANGO_SETTINGS_MODULE=mailerup.sett
 1. **Postgres en producción** (nativo, `127.0.0.1:5432`, vía `DATABASE_URL`). SQLite solo para desarrollo local.
 2. **Sin Redis**. Celery en EAGER; el scheduler usa `threading.Thread`. **1 worker** de uvicorn.
 3. **Tokens públicos firmados**. Nunca expongas UUIDs de Subscriber/Campaign/Step en URLs de emails — usa `make_unsubscribe_token` / `make_track_token` / `make_auto_track_token`.
-4. **Settings de proveedor compartidos**: solo admins las editan; los usuarios normales heredan vía `get_sender()`.
+4. **Settings de proveedor compartidos**: solo admins editan provider/SMTP/footer y las **API keys (Brevo/SendGrid) y la contraseña SMTP**; los usuarios normales heredan la config (no los secretos) vía `get_sender()`. Las keys son `write_only`: nunca se devuelven en lecturas.
 5. **`from_email` alineado con `smtp_user`** (la UI lo auto-sincroniza y el sender lo fuerza). No revertir.
 6. **Roles**: usar `is_staff`. No introducir un campo `role` separado.
+7. **Seguridad por defecto**: API privada (`IsAuthenticated`), sin registro anónimo, entrada pública escapada. Los 8 invariantes de la sección "Modelo de seguridad" son la **prioridad máxima** del proyecto.
 
 ## Cosas que NO hacer
 
 - No compilar el frontend en la VPS (OOM con 1 GB). Build local + subir `dist`.
 - No exponer `db.sqlite3` ni `backend/.env` en commits (comprobado en `.gitignore`).
 - No reintroducir envío de campañas inline en el thread del request HTTP. El envío es **progresivo por lotes** vía el scheduler.
-- Las **credenciales SMTP se guardan en `.env`** (no en la BD) vía `apps/accounts/env_file.py` (`smtp_config_from_env()`). No volver a persistir `smtp_password` en la BD.
+- Las **credenciales SMTP se guardan en `.env`** (no en la BD): se escriben con `update_env()` y se leen con `smtp_config_from_env()` (`apps/integrations/email_sender.py`). No volver a persistir `smtp_password` en la BD.
 - La app arranca por **ASGI** (`mailerup.asgi:application`). `wsgi.py` se mantiene por compatibilidad.
+- **Seguridad (ver "Modelo de seguridad")**: no reabrir el registro anónimo; no poner `AllowAny` en vistas que expongan datos; no devolver `brevo_api_key`/`sendgrid_api_key`/`smtp_password` en lecturas (mantener `write_only`); no quitar el escaping de entrada pública ni la validación anti-inyección de `update_env`.
 
 ## Reglas de cambios — OBLIGATORIO
 
@@ -134,6 +178,9 @@ DJANGO_SETTINGS_MODULE=mailerup.settings.production .venv/bin/python manage.py c
 sudo systemctl restart mailerup
 curl -s -o /dev/null -w "home %{http_code}\n" -H 'X-Forwarded-Proto: https' http://127.0.0.1:8100/   # 404 = ok (la raíz la sirve nginx)
 curl -s -o /dev/null -w "api  %{http_code}\n" -H 'X-Forwarded-Proto: https' http://127.0.0.1:8100/api/analytics/overview/   # 401 sin auth = OK
+# Seguridad: el registro anónimo NO existe y los datos privados requieren auth
+curl -s -o /dev/null -w "register %{http_code}\n" -X POST -H 'X-Forwarded-Proto: https' http://127.0.0.1:8100/api/auth/register/   # 404 = OK (no hay alta pública)
+curl -s -o /dev/null -w "subs %{http_code}\n" -H 'X-Forwarded-Proto: https' http://127.0.0.1:8100/api/subscribers/all/   # 401 sin auth = OK
 # End-to-end (a través de nginx/Cloudflare):
 curl -s -o /dev/null -w "site %{http_code}\n" https://newsletter.example.com/   # 200
 ```

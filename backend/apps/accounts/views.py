@@ -426,6 +426,7 @@ def _set_token_cookies(response, access_token, refresh_token=None):
 
 class CookieTokenObtainView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "login"
 
     def post(self, request):
         from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
