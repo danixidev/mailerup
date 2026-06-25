@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Users, Megaphone, BarChart3, Activity, Settings as SettingsIcon, ShieldUser, LogOut, ClipboardList, Zap, Menu, X, Sun, Moon, HardDrive } from 'lucide-react'
 import { useAuth } from '../auth.jsx'
+import { REPO_URL } from '../repo.js'
+import GithubMark from '../components/GithubMark.jsx'
 
 const baseItems = [
   { to: '/subscribers', label: 'Suscriptores', icon: Users },
@@ -107,6 +109,15 @@ export default function Layout() {
           >
             <LogOut className="h-4 w-4" /> Cerrar sesión
           </button>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          >
+            <GithubMark className="h-4 w-4 transition-transform group-hover:scale-110" />
+            <span>Ver en GitHub</span>
+          </a>
         </div>
       </aside>
 

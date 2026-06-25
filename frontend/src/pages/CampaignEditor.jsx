@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Save, Send, Copy, FileText, CalendarClock, FlaskConical, Eye, X, UserX, Upload } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save, Send, Copy, FileText, CalendarClock, FlaskConical, Eye, X, UserX, Upload, Type, Code2 } from 'lucide-react'
 import api from '../api'
 import RichTextEditor from '../components/RichTextEditor.jsx'
 
@@ -29,8 +29,14 @@ function fillPreviewPlaceholders(html) {
 // Construye un documento HTML aislado que reproduce cómo llega el correo al
 // destinatario: cuerpo real sobre fondo claro, ancho ~600px centrado y responsive.
 function buildPreviewSrcDoc(rawHtml) {
-  const body = fillPreviewPlaceholders(rawHtml).trim()
-    || '<p style="color:#9ca3af;margin:0">Sin contenido todavía.</p>'
+  const filled = fillPreviewPlaceholders(rawHtml).trim()
+  // Si el usuario ha escrito un documento HTML completo (modo HTML), lo
+  // mostramos tal cual para que la vista previa sea fiel a sus propios estilos,
+  // en vez de anidarlo dentro de la maqueta por defecto.
+  if (/<\s*(html|body|!doctype)\b/i.test(filled)) {
+    return filled
+  }
+  const body = filled || '<p style="color:#9ca3af;margin:0">Sin contenido todavía.</p>'
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -94,6 +100,7 @@ export default function CampaignEditor() {
   const [scheduleMode, setScheduleMode] = useState('now') // 'now' | 'later'
   const [scheduledAt, setScheduledAt] = useState(defaultScheduleValue())
   const [showPreview, setShowPreview] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'html'
   const [testEmail, setTestEmail] = useState('')
   const [testSending, setTestSending] = useState(false)
   const [testResult, setTestResult] = useState(null)
@@ -502,12 +509,60 @@ export default function CampaignEditor() {
           </div>
 
           <div className="card p-5 space-y-3">
-            <h2 className="font-semibold">Contenido</h2>
-            <RichTextEditor
-              value={form.html_content}
-              onChange={(html) => setForm({ ...form, html_content: html })}
-              footer={me}
-            />
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="font-semibold">Contenido</h2>
+              {/* Selector de modo: editor visual (Tiptap) o HTML en crudo */}
+              <div className="inline-flex rounded-md border border-gray-300 dark:border-slate-600 overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('visual')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${
+                    editorMode === 'visual'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                  }`}
+                  aria-pressed={editorMode === 'visual'}
+                >
+                  <Type className="h-4 w-4" /> Visual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('html')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 border-l border-gray-300 dark:border-slate-600 ${
+                    editorMode === 'html'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                  }`}
+                  aria-pressed={editorMode === 'html'}
+                >
+                  <Code2 className="h-4 w-4" /> HTML
+                </button>
+              </div>
+            </div>
+
+            {editorMode === 'visual' ? (
+              <RichTextEditor
+                value={form.html_content}
+                onChange={(html) => setForm({ ...form, html_content: html })}
+                footer={me}
+              />
+            ) : (
+              <div className="space-y-2">
+                <textarea
+                  className="input font-mono text-sm leading-relaxed min-h-[420px] whitespace-pre"
+                  spellCheck={false}
+                  value={form.html_content}
+                  onChange={(e) => setForm({ ...form, html_content: e.target.value })}
+                  placeholder={'<!doctype html>\n<html>\n  <body style="margin:0;background:#f4f4f7;">\n    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">\n      <!-- Escribe tu correo HTML completo con estilos en línea -->\n    </table>\n  </body>\n</html>'}
+                />
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Modo HTML: escribe el correo completo con tus propios estilos (recomendado en línea, <code>style="…"</code>).
+                  Al volver al modo <strong>Visual</strong>, el editor puede simplificar etiquetas o estilos que no reconoce.
+                  Usa <strong>Vista previa</strong> para comprobar el resultado final.
+                </p>
+              </div>
+            )}
+
             <p className="text-xs text-gray-500 dark:text-slate-400">
               Puedes usar <code>{'{{first_name}}'}</code>, <code>{'{{last_name}}'}</code>, <code>{'{{email}}'}</code> como variables.
             </p>

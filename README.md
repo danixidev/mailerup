@@ -4,7 +4,7 @@
 
 # MailerUp
 
-**Versión 1.0.3**
+**Versión 1.1.0**
 
 Plataforma autoalojada de newsletter al estilo MailerLite/Mailchimp: gestiona suscriptores, crea correos con un editor enriquecido, envíalos al instante o prográmalos, y mide aperturas y clics. Pensada para correr en una VPS modesta (despliegue **nativo**: PostgreSQL + systemd/uvicorn + nginx — ver [`deploy/README.md`](deploy/README.md)) con SMTP de tu hosting o Postfix local (Raiola, Gmail, Outlook, IONOS…), sin depender de servicios externos de pago.
 
@@ -67,6 +67,8 @@ Vista de la secuencia completa con todos los pasos ordenados, el delay de cada u
 - Roles **admin** / usuario normal con `Gestión de usuarios` (admin-only)
 - Suscriptores con import/export CSV
 - Editor WYSIWYG (negrita, cursiva, listas, enlaces, imágenes, toggle de espaciado)
+- **Modo HTML**: en el editor de campañas puedes alternar entre el editor visual y un editor de **HTML en crudo** para construir correos completos con tus propios estilos en línea (`style="…"`), con vista previa fiel
+- Enlace al **repositorio en GitHub** accesible desde la pantalla de login y el pie del panel
 - Inserción de pie de correo + botón "Darse de baja" con un clic
 - Programación de envíos a fecha futura
 - Pestañas **Borradores · Bandeja de salida · Programados**
