@@ -324,12 +324,27 @@ def add_subscriber(request):
     return Response(SubscriberSerializer(sub).data, status=201 if created else 200)
 
 
+def _csv_safe(value):
+    """Neutraliza inyección de fórmulas CSV (CWE-1236). El nombre/apellido de un
+    suscriptor es entrada pública (formulario de alta sin auth, import CSV): si
+    empieza por =, +, -, @, tab o CR, una hoja de cálculo (Excel/LibreOffice/
+    Sheets) lo interpretaría como fórmula al abrir el export. Se antepone un
+    apóstrofo para forzar que la celda se trate como texto literal."""
+    s = "" if value is None else str(value)
+    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + s
+    return s
+
+
 def _csv_response(subscribers, filename):
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["email", "first_name", "last_name", "status", "subscribed_at"])
     for s in subscribers:
-        writer.writerow([s.email, s.first_name, s.last_name, s.status, s.subscribed_at])
+        writer.writerow([
+            _csv_safe(s.email), _csv_safe(s.first_name), _csv_safe(s.last_name),
+            s.status, s.subscribed_at,
+        ])
     response = HttpResponse(output.getvalue(), content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
