@@ -6,6 +6,95 @@ import RichTextEditor from '../components/RichTextEditor.jsx'
 
 const BLANK_CONTENT = '<p>Escribe el contenido de tu correo aquí…</p>'
 
+// Plantilla de arranque para el modo HTML: email responsive basado en tablas
+// (el formato robusto que entienden todos los clientes de correo), con tarjeta
+// de 600px, barra de acento, cabecera, título, cuerpo, botón CTA y pie con el
+// enlace de baja real ({{unsubscribe_url}}). Pensada para que el usuario parta
+// de una base sólida y solo cambie textos/colores, en lugar de una caja vacía.
+const HTML_STARTER_TEMPLATE = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{first_name}}, tenemos algo para ti</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5fb;">
+
+  <!-- Preheader oculto (texto de vista previa en la bandeja) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:#f4f5fb; font-size:1px; line-height:1px;">
+    Resume aquí en una línea de qué va el correo.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f5fb;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <!-- Tarjeta 600px -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #e6e7f0;">
+
+          <!-- Barra de acento -->
+          <tr>
+            <td style="height:6px; line-height:6px; font-size:6px; background:#4f46e5;">&nbsp;</td>
+          </tr>
+
+          <!-- Cabecera -->
+          <tr>
+            <td style="padding:28px 32px 8px 32px; font-family:Arial,Helvetica,sans-serif; font-size:22px; font-weight:800; color:#1f2433;">
+              Tu Marca
+            </td>
+          </tr>
+
+          <!-- Título -->
+          <tr>
+            <td style="padding:8px 32px 0 32px; font-family:Arial,Helvetica,sans-serif;">
+              <h1 style="margin:0; font-size:24px; line-height:1.3; font-weight:800; color:#1f2433;">
+                Hola {{first_name}}, este es tu titular
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Cuerpo -->
+          <tr>
+            <td style="padding:18px 32px 8px 32px; font-family:Arial,Helvetica,sans-serif; font-size:16px; line-height:1.65; color:#1f2433;">
+              <p style="margin:0 0 16px 0;">Escribe aquí tu mensaje. Puedes usar <strong>negrita</strong>, <em>cursiva</em> y enlaces.</p>
+              <p style="margin:0 0 16px 0;">Personaliza con variables como {{first_name}}, {{last_name}} o {{email}}.</p>
+            </td>
+          </tr>
+
+          <!-- Botón CTA -->
+          <tr>
+            <td align="center" style="padding:8px 32px 28px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#4f46e5" style="border-radius:10px;">
+                    <a href="https://tu-enlace.com" target="_blank"
+                       style="display:inline-block; padding:14px 32px; font-family:Arial,Helvetica,sans-serif; font-size:16px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:10px;">
+                      Llamada a la acción
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Pie -->
+          <tr>
+            <td style="padding:0 32px 28px 32px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.6; color:#8a92a6;">
+              <div style="border-top:1px solid #e6e7f0; padding-top:16px;">
+                Recibes este correo porque te suscribiste.<br>
+                <a href="{{unsubscribe_url}}" style="color:#8a92a6; text-decoration:underline;">Darse de baja</a>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`
+
 // Valores de ejemplo para previsualizar las variables tal como se rellenan en el
 // envío real (ver apps/campaigns/tasks.py -> _personalize y automations/tasks.py).
 const PREVIEW_SAMPLE = {
@@ -548,6 +637,22 @@ export default function CampaignEditor() {
               />
             ) : (
               <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    Pega o escribe un correo HTML completo (tablas + estilos en línea).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const empty = !form.html_content || form.html_content.trim() === '' || form.html_content === BLANK_CONTENT
+                      if (!empty && !confirm('Esto reemplazará el contenido actual por la plantilla de ejemplo. ¿Continuar?')) return
+                      setForm({ ...form, html_content: HTML_STARTER_TEMPLATE })
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 dark:border-primary-700 bg-primary-50 dark:bg-primary-900/30 px-2.5 py-1 text-xs font-medium text-primary-700 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/50"
+                  >
+                    <Code2 className="h-3.5 w-3.5" /> Insertar plantilla de ejemplo
+                  </button>
+                </div>
                 <textarea
                   className="input font-mono text-sm leading-relaxed min-h-[420px] whitespace-pre"
                   spellCheck={false}
@@ -557,6 +662,7 @@ export default function CampaignEditor() {
                 />
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Modo HTML: escribe el correo completo con tus propios estilos (recomendado en línea, <code>style="…"</code>).
+                  Incluye <code>{'{{unsubscribe_url}}'}</code> en tu pie para respetar tu maquetación; si no lo pones, MailerUp añadirá un pie de baja al enviar.
                   Al volver al modo <strong>Visual</strong>, el editor puede simplificar etiquetas o estilos que no reconoce.
                   Usa <strong>Vista previa</strong> para comprobar el resultado final.
                 </p>

@@ -124,7 +124,7 @@ def process_automation_queue():
             subject = _fill(step.subject)
             # Pie SIEMPRE generado al enviar desde la config (quita el del cuerpo
             # y añade uno limpio), luego se rellenan placeholders.
-            from apps.accounts.footer import apply_footer
+            from apps.accounts.footer import apply_footer, inject_before_body_end
             html = _fill(apply_footer(step.html_content, user), html=True)
 
             # Tracking de automatización: reescribe enlaces a /ca/<token>/ e
@@ -138,7 +138,8 @@ def process_automation_queue():
                 return f'href="{base}/ca/{_tok}/?u={quote(u, safe="")}"'
 
             html = href_re.sub(_rewrite, html)
-            html += (
+            html = inject_before_body_end(
+                html,
                 f'<img src="{base}/oa/{track_token}/" width="1" height="1" '
                 f'alt="" style="display:block;border:0;outline:none" />'
             )

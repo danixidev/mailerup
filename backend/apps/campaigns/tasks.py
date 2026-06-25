@@ -203,7 +203,7 @@ HREF_RE = re.compile(r'href="([^"]+)"', re.IGNORECASE)
 def _personalize(html, subscriber, campaign):
     """Substitute placeholders, rewrite links for click tracking, inject open pixel."""
     from apps.analytics.views import make_unsubscribe_token, make_track_token
-    from apps.accounts.footer import apply_footer
+    from apps.accounts.footer import apply_footer, inject_before_body_end
     from django.utils.html import escape
 
     base = settings.PUBLIC_BASE_URL.rstrip("/")
@@ -239,4 +239,6 @@ def _personalize(html, subscriber, campaign):
     html = HREF_RE.sub(rewrite, html)
 
     pixel = f'<img src="{base}/o/{track_token}/" width="1" height="1" alt="" style="display:block;border:0;outline:none" />'
-    return html + pixel
+    # En correos de modo HTML (documento completo) el pixel se inserta antes de
+    # </body> para no quedar fuera del documento tras </html>.
+    return inject_before_body_end(html, pixel)

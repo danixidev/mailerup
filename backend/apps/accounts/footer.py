@@ -111,11 +111,46 @@ def strip_footer(html):
     return (html[:start] + html[end:]).rstrip()
 
 
+_FULL_DOC_RE = re.compile(r"</body\s*>|</html\s*>", re.IGNORECASE)
+
+
+def is_full_document(html):
+    """True si el HTML es un documento completo (correo escrito en modo HTML con
+    su propio <body>/</html>), no un fragmento del editor TipTap."""
+    return bool(html) and bool(_FULL_DOC_RE.search(html))
+
+
+def inject_before_body_end(html, snippet):
+    """Inserta `snippet` justo antes de </body> (o </html> si no hay body). Si el
+    HTML no es un documento completo, lo añade al final. Mantiene el HTML válido
+    en correos escritos a mano en modo HTML: el pie y el pixel de seguimiento
+    quedan DENTRO del documento, no flotando tras </html>."""
+    if not snippet:
+        return html
+    html = html or ""
+    for tag in ("</body>", "</html>"):
+        idx = html.lower().rfind(tag)
+        if idx != -1:
+            return html[:idx] + snippet + html[idx:]
+    return html + snippet
+
+
 def apply_footer(html, user):
     """Quita cualquier pie del cuerpo y añade uno nuevo y limpio desde la config.
     Es lo que se usa AL ENVIAR para garantizar estilo correcto y sin duplicados,
-    pase lo que pase con el editor."""
-    return strip_footer(html or "") + build_footer_html(user)
+    pase lo que pase con el editor.
+
+    Para correos en **modo HTML** (documento completo) NO se aplica `strip_footer`
+    —pensado para los fragmentos de TipTap, destrozaría la maqueta de tablas—:
+    si el autor ya colocó su propio enlace de baja (`{{unsubscribe_url}}`) se
+    respeta su diseño tal cual; si no, se inserta el pie configurable antes de
+    `</body>` para garantizar la baja legal sin romper el documento."""
+    html = html or ""
+    if is_full_document(html):
+        if "{{unsubscribe_url}}" in html:
+            return html
+        return inject_before_body_end(html, build_footer_html(user))
+    return strip_footer(html) + build_footer_html(user)
 
 
 def replace_handwritten_footer(html, user):
