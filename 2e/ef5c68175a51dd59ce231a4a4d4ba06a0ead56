@@ -1,0 +1,51 @@
+backend/apps/accounts/serializers.py
+  s_9d0479f32b9391::t_d9289c105b9ee3 4-5
+  s_9d0479f32b9391::t_9cef772afef965 231
+  s_9d0479f32b9391::t_d1b45687785fde 224-230,232-233
+backend/apps/accounts/urls.py
+  s_9d0479f32b9391::t_4747b3eb8a9e39 18-19
+  s_9d0479f32b9391::t_27e151ea4df0b6 5
+frontend/src/pages/Settings.jsx
+  s_9d0479f32b9391::t_858b59745c1d6d 496-643
+  s_9d0479f32b9391::t_14762ef55fca4a 411-412
+  s_9d0479f32b9391::t_5ec5548aa6857a 2
+backend/apps/accounts/authentication.py
+  s_9d0479f32b9391::t_ce9c5359900e0b 35-39
+  s_9d0479f32b9391::t_1e117c82cea3ce 1-2,15-34,40-50
+backend/apps/accounts/migrations/0006_apikey.py
+  s_9d0479f32b9391::t_68ca25e712f198 1-32
+backend/apps/subscribers/views.py
+  s_9d0479f32b9391::t_134cd3db2f9aec 4,6,11
+  s_9d0479f32b9391::t_4e0fe962ebe13b 13
+  s_9d0479f32b9391::t_2c74218aa9a82b 332-357,365-373,379,381-384
+  s_9d0479f32b9391::t_394cb42f14e611 12
+  s_9d0479f32b9391::t_9d17e96f291468 358,360-364,374-378,380,385-393
+  s_9d0479f32b9391::t_5b1c9d3ca226a4 359,394-395
+backend/mailerup/settings/base.py
+  s_9d0479f32b9391::t_9bf7ee594eafa1 108-111
+backend/apps/accounts/views.py
+  s_9d0479f32b9391::t_f1546e1bb7d760 13,15,17
+  s_9d0479f32b9391::t_a0f547b4ad513b 288-310
+backend/mailerup/urls.py
+  s_9d0479f32b9391::t_38016742bee42d 10
+  s_9d0479f32b9391::t_51aac3709efc9c 30-31
+backend/apps/accounts/models.py
+  s_9d0479f32b9391::t_46673beaf0a8e7 97-137
+  s_9d0479f32b9391::t_29ebe877a9f031 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2eef5c68175a51dd59ce231a4a4d4ba06a0ead56",
+  "prompts": {},
+  "sessions": {
+    "s_9d0479f32b9391": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ef735de-2b08-4ace-91dc-040ce8864da4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dani X <danixidev@gmail.com>"
+    }
+  }
+}
